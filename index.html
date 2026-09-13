@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鱼类行为预测 · 在线分析</title>
+<style>
+:root{--bg:#06121f;--panel:#0a1b2e;--panel2:#0d2236;--line:rgba(120,200,255,.14);--line2:rgba(120,200,255,.3);
+--txt:#d9e8f5;--mut:#7f9db8;--dim:#587a96;--cyan:#3ec6ff;--teal:#2fe0c0;--amber:#f5b23c;--orange:#f2762e;--red:#ef5350;--green:#34d17b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.6;
+background-image:radial-gradient(circle at 12% -10%,rgba(46,150,220,.14),transparent 42%),radial-gradient(rgba(120,200,255,.05) 1px,transparent 1px);background-size:auto,26px 26px;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:22px 18px 60px}
+header h1{font-size:21px;font-weight:800;background:linear-gradient(90deg,#7fd9ff,#2fe0c0);-webkit-background-clip:text;background-clip:text;color:transparent;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header h1 .tag{font-size:11px;font-weight:600;color:#06222f;background:var(--teal);padding:2px 9px;border-radius:20px;-webkit-text-fill-color:#06222f}
+header p{color:var(--mut);font-size:12.5px;margin-top:4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin-top:16px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px}
+.p-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.p-head .sb{flex:none;font-family:Consolas,monospace;font-size:11px;font-weight:700;color:#04121d;background:var(--teal);border-radius:6px;padding:2px 7px}
+.p-head:nth-of-type(2) .sb{background:var(--cyan)}
+.p-head .t{font-size:14px;font-weight:700}
+.p-head .sub{color:var(--dim);font-size:11px;margin-left:auto}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.presets .ps{font-size:11px;color:var(--cyan);background:rgba(62,198,255,.08);border:1px solid rgba(62,198,255,.3);border-radius:7px;padding:3px 10px;cursor:pointer}
+.presets .ps:hover{background:rgba(62,198,255,.18)}
+/* 上传区 */
+.drop{border:1.5px dashed var(--line2);border-radius:11px;padding:22px 14px;text-align:center;color:var(--mut);cursor:pointer;transition:all .15s;background:var(--panel2)}
+.drop:hover,.drop.on{border-color:var(--cyan);color:var(--txt)}
+.drop .big{font-size:26px;margin-bottom:4px}
+.drop .hint{font-size:11px;color:var(--dim);margin-top:4px}
+.mode{display:flex;gap:6px;margin-bottom:10px}
+.mode .mb{flex:1;font-size:12px;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 4px;cursor:pointer;text-align:center;user-select:none}
+.mode .mb.on{color:#04121d;background:var(--cyan);border-color:var(--cyan);font-weight:700}
+#preview{width:100%;border-radius:9px;background:#04101c;display:none;margin-top:10px}
+#preview.show{display:block}
+.meta{font-size:11px;color:var(--dim);font-family:Consolas,monospace;margin-top:6px;display:none}
+textarea{width:100%;min-height:120px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-family:inherit;font-size:13px;padding:10px 12px;resize:vertical;outline:none}
+textarea:focus{border-color:var(--cyan)}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.qk{font-size:11px;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:2px 10px;cursor:pointer}
+.qk:hover{color:var(--cyan);border-color:var(--cyan)}
+.param{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12.5px}
+.param .k{width:118px;color:var(--mut)}
+.param input[type=range]{flex:1;accent-color:var(--cyan);height:4px;cursor:pointer}
+.param .v{width:86px;text-align:right;font-family:Consolas,monospace;color:var(--cyan);font-variant-numeric:tabular-nums}
+.go{width:100%;margin-top:6px;font-size:15px;font-weight:800;color:#04121d;background:linear-gradient(90deg,var(--cyan),var(--teal));border:0;border-radius:10px;padding:12px;cursor:pointer;letter-spacing:2px}
+.go:hover{filter:brightness(1.1)}
+.go:disabled{opacity:.5;cursor:wait}
+.note{font-size:10.5px;color:var(--dim);margin-top:8px;line-height:1.7}
+/* 结果 */
+#result{display:none;margin-top:16px}
+.lv{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:3px 12px;border-radius:8px;letter-spacing:1px}
+.lv0{color:var(--green);background:rgba(52,209,123,.12);border:1px solid rgba(52,209,123,.45)}
+.lv1{color:var(--amber);background:rgba(245,178,60,.12);border:1px solid rgba(245,178,60,.45)}
+.lv2{color:var(--orange);background:rgba(242,118,46,.14);border:1px solid rgba(242,118,46,.5)}
+.lv3{color:#fff;background:rgba(239,83,80,.22);border:1px solid var(--red)}
+.gauge{position:relative;height:14px;border-radius:7px;overflow:hidden;background:linear-gradient(90deg,var(--green) 0 25%,var(--amber) 25% 50%,var(--orange) 50% 75%,var(--red) 75% 100%);margin:10px 0 4px}
+.gauge .pin{position:absolute;top:-3px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #0a1b2e;transform:translateX(-50%);box-shadow:0 0 6px rgba(0,0,0,.5)}
+.scale{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:Consolas,monospace}
+.rcomp{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.rc{display:grid;grid-template-columns:120px 1fr 46px;gap:10px;align-items:center;font-size:12px}
+.rc .k{color:var(--mut)}
+.rc .tr{height:8px;background:rgba(120,200,255,.1);border-radius:4px;overflow:hidden}
+.rc .fl{height:100%;background:linear-gradient(90deg,var(--cyan),var(--teal));border-radius:4px}
+.rc .v{font-family:Consolas,monospace;color:var(--cyan);text-align:right}
+.behs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+@media(max-width:640px){.behs{grid-template-columns:1fr}}
+.beh{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.beh .bt{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:#cfe6f6}
+.beh .bt .pc{font-family:Consolas,monospace;color:var(--amber)}
+.beh .sup{height:6px;background:rgba(120,200,255,.1);border-radius:3px;overflow:hidden;margin-top:6px}
+.beh .sup i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--teal));border-radius:3px}
+.beh .bd{font-size:11px;color:var(--mut);margin-top:5px}
+.plans{display:flex;flex-direction:column;gap:9px;margin-top:10px}
+.plan{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:10px 13px}
+.plan.p0{border-left-color:var(--red)}
+.plan .ph{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.plan .pn{font-weight:700;color:var(--amber);font-size:13.5px}
+.plan .pt{font-size:10.5px;color:var(--dim);font-family:Consolas,monospace}
+.plan .steps{margin-top:5px;font-size:12.5px;color:#c9e2f4;line-height:1.85}
+.plan .dev{margin-top:5px;font-size:11px;color:var(--teal)}
+.plan .pr{margin-top:4px;font-size:10.5px;color:var(--dim)}
+.plan .pn2{margin-top:5px;font-size:11px;color:var(--amber)}
+.thumbs{display:flex;gap:8px;margin-top:8px}
+.thumbs .th{flex:1;position:relative}
+.thumbs img{width:100%;border-radius:7px;border:1px solid var(--line);display:block}
+.thumbs .tl{position:absolute;left:6px;top:6px;font-size:10px;color:#fff;background:rgba(3,14,24,.7);padding:1px 7px;border-radius:5px}
+.vis .report{margin-top:10px;display:flex;gap:8px}
+.exprow{display:flex;gap:8px;align-items:center;margin-top:12px}
+.exprow .btn2{font-size:12px;color:#04121d;background:linear-gradient(90deg,var(--amber),var(--orange));border:0;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700}
+.exprow .btn2:hover{filter:brightness(1.08)}
+.vis{display:none;margin-top:10px}
+.vis.show{display:block}
+.vis canvas{width:100%;border-radius:9px;background:#04101c;margin-top:8px}
+.vbars{display:flex;gap:10px;margin-top:8px}
+.vbar{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;text-align:center}
+.vbar .k{font-size:10.5px;color:var(--dim)}
+.vbar .v{font-family:Consolas,monospace;font-size:15px;font-weight:700;color:var(--cyan);margin-top:2px}
+.evid{margin-top:8px;font-size:11.5px;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;line-height:1.8}
+.evid b{color:var(--teal)}
+footer{margin-top:24px;border-top:1px solid var(--line);padding-top:14px;color:var(--dim);font-size:11px;line-height:1.9}
+footer b{color:var(--mut)}
+.mask{position:fixed;inset:0;background:rgba(2,8,16,.72);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;backdrop-filter:blur(3px)}
+.mask.on{display:flex}
+.modal{width:min(860px,100%);max-height:86vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:13px}
+.modal .mh{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:13px 18px;background:#0b2236;border-bottom:1px solid var(--line)}
+.modal .mh .t{font-weight:800;color:var(--cyan)}
+.modal .mh button{margin-left:auto;background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--mut);padding:5px 12px;cursor:pointer;font-size:12px}
+.modal .mb{padding:6px 18px 20px}
+.rf{border-bottom:1px solid rgba(120,200,255,.08);padding:9px 2px;font-size:12px;line-height:1.7}
+.rf .tg{font-family:Consolas,monospace;color:var(--amber);font-weight:700;margin-right:8px}
+.rf .cn{color:var(--teal);font-size:11px;margin-left:8px}
+.rf .nt{color:var(--mut);font-size:11px;display:block;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>鱼类行为预测 · 在线分析 <span class="tag">BEHAVIOR PREDICTOR</span></h1>
+  <p>上传视频 / 图片 / 文字描述 → 行为判定 · 风险评估 · 解决方案 —— 依据本项目知识图谱（113 实体 / 230 关系）与文献规则推理，纯浏览器端运行、数据不上传</p>
+</header>
+
+<div class="grid">
+  <!-- 输入区 -->
+  <div>
+    <div class="panel">
+      <div class="p-head"><span class="sb">01</span><div class="t">上传视频或图片</div><div class="sub">可选</div></div>
+      <div class="mode" id="upMode">
+        <div class="mb on" data-m="video">🎬 视频</div>
+        <div class="mb" data-m="image">🖼 图片</div>
+      </div>
+      <div class="drop" id="drop">
+        <div class="big">⬆</div>
+        <div id="dropText">点击或拖拽视频文件到此处</div>
+        <div class="hint">支持 mp4 / webm / mov · 建议 ≤60s，画面含鱼群 · 文件仅在本地浏览器内分析，不会上传</div>
+      </div>
+      <input type="file" id="file" accept="video/*,image/*" style="display:none">
+      <video id="preview" controls muted playsinline></video>
+      <div class="meta" id="fmeta"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="p-head"><span class="sb" style="background:var(--cyan)">02</span><div class="t">水质参数</div><div class="sub">可选 · 有实测值时评估更准</div></div>
+      <div class="param"><span class="k">溶解氧 DO</span><input type="range" id="pDO" min="0" max="12" step="0.1" value="0"><span class="v" id="vDO">未提供</span></div>
+      <div class="param"><span class="k">氨氮 NH₃</span><input type="range" id="pNH3" min="0" max="2" step="0.05" value="0"><span class="v" id="vNH3">未提供</span></div>
+      <div class="param"><span class="k">水温 T</span><input type="range" id="pT" min="0" max="38" step="0.5" value="0"><span class="v" id="vT">未提供</span></div>
+      <div class="note">滑到最左（0）表示"未测量"。DO 阈值口径：GB 11607-89 要求 16h≥5 mg/L；系统预警 &lt;2.5、危急 &lt;1.5。</div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="p-head"><span class="sb" style="background:var(--amber);color:#1c0e00">03</span><div class="t">文字描述现场情况</div><div class="sub">推荐填写，可单独使用</div></div>
+      <div class="presets">
+        <span class="ps" data-sc="hypoxia">📋 示例：缺氧浮头</span>
+        <span class="ps" data-sc="ammonia">📋 示例：氨氮超标水浑</span>
+        <span class="ps" data-sc="normal">📋 示例：正常巡游</span>
+      </div>
+      <textarea id="desc" placeholder="例：今天凌晨发现鱼群聚集在水面张口呼吸，游动缓慢，水色偏浑浊，昨天下过大雨，之前有少量死鱼…"></textarea>
+      <div class="quick">
+        <span class="qk">浮头</span><span class="qk">狂游乱窜</span><span class="qk">拒食</span><span class="qk">擦底蹭壁</span>
+        <span class="qk">伏底不动</span><span class="qk">跳塘</span><span class="qk">抢食猛烈</span><span class="qk">水浑浊</span>
+        <span class="qk">下暴雨</span><span class="qk">水温高</span><span class="qk">有死鱼</span><span class="qk">体表白毛</span>
+      </div>
+    </div>
+
+    <button class="go" id="btnGo">开 始 分 析 预 测</button>
+    <div class="note">⚠ 方法说明：视频/图片采用浏览器端<b>启发式视觉分析</b>（帧间差分运动能量、空间分布统计），并非深度模型推理；文字与水质参数采用<b>知识图谱规则推理</b>（阈值依据 GB 11607-89 与文献）。输出为决策支持参考，不替代专业兽医与现场管理判断。</div>
+  </div>
+
+  <!-- 结果区 -->
+  <div id="result">
+    <div class="panel">
+      <div class="p-head"><div class="bar"></div><div class="t">行为判定</div><span class="sub" id="resMode"></span><button class="btn2" id="btnReport" style="margin-left:auto">⬇ 导出分析报告</button></div>
+      <div class="behs" id="behs"></div>
+      <div class="evid" id="behEvid"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="p-head"><div class="bar"></div><div class="t">风险评估</div><span class="lv lv0" id="lvChip">安全</span></div>
+      <div class="note" id="lvDesc" style="margin:6px 0 0"></div>
+      <div class="gauge"><div class="pin" id="gpin" style="left:0%"></div></div>
+      <div class="scale"><span>0 安全</span><span>0.25 注意</span><span>0.5 预警</span><span>0.75 危急</span><span>1.0</span></div>
+      <div class="rcomp" id="rcomp"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="p-head"><div class="bar"></div><div class="t">解决方案</div><div class="sub" id="planCnt"></div></div>
+      <div class="plans" id="plans"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="p-head"><div class="bar"></div><div class="t">引用依据</div><button class="btn" style="margin-left:auto" onclick="document.getElementById('mask').classList.add('on')">查看全部文献</button></div>
+      <div class="note" id="usedRefs" style="margin-top:2px"></div>
+    </div>
+    <div class="panel vis" id="visPanel">
+      <div class="p-head"><div class="bar"></div><div class="t">视觉分析明细</div><div class="sub">启发式指标 · 帧间差分</div></div>
+      <canvas id="chart" height="150"></canvas>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="vbars">
+        <div class="vbar"><div class="k">平均运动强度</div><div class="v" id="mMot">-</div></div>
+        <div class="vbar"><div class="k">表层运动占比</div><div class="v" id="mTop">-</div></div>
+        <div class="vbar"><div class="k">运动突变度</div><div class="v" id="mBur">-</div></div>
+        <div class="vbar"><div class="k">分析帧数</div><div class="v" id="mFr">-</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div><b>方法与边界：</b>行为判定 = 视觉启发式指标（有视频时）与文字关键词识别（知识图谱 10 类行为本体）的加权融合；风险评估 = R = 0.35·溶氧 + 0.40·行为 + 0.25·氨氮（未提供的分量按可用分量重归一化）；解决方案 = 知识图谱 13 类预案（条件—步骤—设备—文献）。本页为决策支持工具，所有数值阈值的文献口径见页面内引用标签。</div>
+  <div style="margin-top:4px">上海海洋大学 大学生创新训练计划 · 多模态鱼类行为预测 · 纯静态离线运行 · 数据不出浏览器</div>
+</footer>
+</div>
+
+<div class="mask" id="mask"><div class="modal"><div class="mh"><span class="t">文献依据</span><button onclick="document.getElementById('mask').classList.remove('on')">✕ 关闭</button></div><div class="mb" id="reflist"></div></div></div>
+
+<script>
+/* ============ 文献库 ============ */
+const REFS = {
+ S4:{t:"Kramer D L. Dissolved oxygen and fish behavior. Environmental Biology of Fishes, 1987, 18(2): 81-92.",n:"浮头（ASR）在低氧阈值触发：约 0.8~5.4 mg/L",c:"水质与标准"},
+ S6:{t:"GB 11607-89《渔业水质标准》.",n:"DO 16h≥5、其余≥3；pH 6.5~8.5；非离子氨≤0.02 mg/L",c:"水质与标准"},
+ S7:{t:"Benson B B, Krause D. Limnology and Oceanography, 1984, 29(3): 620-632.",n:"DOsat(T) 温度多项式",c:"水质与标准"},
+ S8:{t:"UF/IFAS Extension FA002: Dissolved Oxygen for Fish Production.",n:"DO<5 有害；<2 出现吞气",c:"水质与标准"},
+ S9:{t:"雷衍之.《养殖水环境化学》. 中国农业出版社.",n:"DO 动力学/泛塘机理/氮磷/硫化氢",c:"水质与标准"},
+ S1:{t:"Katz Y, et al. PNAS, 2011, 108(46): 18720-18725.",n:"NND 与群体相互作用推断",c:"群体行为学"},
+ S2:{t:"Pitcher T J. Animal Behaviour, 1983, 31(2): 611-613.",n:"极化度定义",c:"群体行为学"},
+ S3:{t:"Couzin I D, et al. Nature, 2005, 433: 513-516.",n:"排斥-定向-吸引分区模型",c:"群体行为学"},
+ S5:{t:"Domenici P, et al. Phil Trans R Soc B, 2007, 362: 2105-2121.",n:"低氧与反捕行为",c:"水质与标准"},
+ S10:{t:"Jocher G, et al. Ultralytics YOLOv8, 2023.",n:"检测基座",c:"视觉与跟踪"},
+ S11:{t:"Aharon W M, et al. BoT-SORT. arXiv:2206.14651, 2022.",n:"多目标跟踪",c:"视觉与跟踪"},
+ S13:{t:"Fish tracking/counting/behaviour survey. arXiv:2406.17800, 2024.",n:"全链路综述",c:"视觉与跟踪"},
+ S14:{t:"AI for fish behavior recognition: a review. Frontiers in Marine Science, 2023, 10: 1010761.",n:"行为识别综述",c:"视觉与跟踪"},
+ S17:{t:"ML-based sensor data fusion for animal monitoring. Sensors, 2023, 23(14): 6437.",n:"多源融合",c:"融合与预测"},
+ S18:{t:"Shoal cohesion and polarisation in turbid water. bioRxiv, 2025.",n:"浊度改变群体行为",c:"融合与预测"},
+ S19:{t:"Lewis P, et al. RAG. NeurIPS, 2020.",n:"检索增强生成",c:"智能决策"},
+ S20:{t:"KG2RAG. NAACL, 2025.",n:"图谱引导 RAG",c:"智能决策"},
+ S22:{t:"Cortisol as a stress indicator in fish. 2023. PMC10341563.",n:"皮质醇/血糖/乳酸应激指标",c:"行为与生理"},
+ S23:{t:"Tucker C. Pond aeration. SRAC 3700, 2005.",n:"增氧机选型与应急增氧",c:"预案与设备"},
+};
+const ORDER = ["S4","S6","S7","S8","S9","S1","S2","S3","S5","S10","S11","S13","S14","S15","S17","S18","S19","S20","S22","S23"];
+
+/* ============ 预案库（知识图谱 条件-步骤-设备-依据） ============ */
+const PLANS = [
+ {id:"pl8", n:"预案F · 应急增氧", trig:"DO < 1.5 mg/L 或 泛塘征兆", lvl:3,
+  steps:"① 主+备增氧机全功率开启；② 暂停一切投喂；③ 应急换水 20%；④ 通知管理人员现场值守，直至 DO 回升至 4 mg/L 以上。",
+  dev:"叶轮增氧机 + 备用增氧机 + 换水泵", refs:["S4","S8","S23"]},
+ {id:"pl1", n:"预案A · 低氧增氧", trig:"DO < 2.5 mg/L 或 浮头", lvl:2,
+  steps:"① 开启叶轮增氧机 + 微孔曝气（浅塘叶轮混合、深水微孔传氧效率高）；② 目标 DO≥4 mg/L；③ ≤5 min 内响应，20 min 后复测。",
+  dev:"叶轮增氧机 / 微孔曝气盘", refs:["S4","S6","S23"]},
+ {id:"pl2", n:"预案D · 停喂减负", trig:"DO < 3.5 mg/L 且 浮头", lvl:2,
+  steps:"① 暂停投喂 1～2 天（削减消化代谢耗氧与残饵 BOD）；② 恢复投喂时减量至八成饱并观察摄食强度。",
+  dev:"投喂机", refs:["S9"]},
+ {id:"pl3", n:"预案B · 加大换水", trig:"氨氮 > 0.5 / 亚硝酸盐超标 / 浊度 > 50 NTU", lvl:2,
+  steps:"① 换水 10%～20%（控制温盐差 ≤3，避免二次应激）；② 联动底排污清除沉积污物；③ 换水后复测氨氮与 pH。",
+  dev:"换水泵 + 排污泵", refs:["S6","S9"]},
+ {id:"pl7", n:"预案B+ · 氨氮降解", trig:"氨氮持续 > 0.5 mg/L 或 非离子氨超限", lvl:2,
+  steps:"① 换水+底排污协同；② 减喂降低蛋白输入；③ 检查 pH（>8.5 时非离子氨毒性放大，优先调 pH）；④ 增氧促进硝化。",
+  dev:"换水泵 / 排污泵 / 增氧机", refs:["S6","S9"]},
+ {id:"pl4", n:"预案C · 循环降温", trig:"水温 > 30 ℃", lvl:1,
+  steps:"① 循环降温机组运行至 ≤28 ℃；② 加大监测频率（高温期 DOsat 下降+代谢耗氧双升）。",
+  dev:"循环降温机组", refs:["S7","S9"]},
+ {id:"pl9", n:"预案C+ · 防逆温保氧", trig:"水温 < 18 ℃ 或 暴雨预报", lvl:1,
+  steps:"① 保温（减少换水/加深水位）；② 预防性增氧；③ 雨后防密度分层阻断氧交换。",
+  dev:"循环降温机组 / 增氧机", refs:["S9"]},
+ {id:"pl5", n:"预案D+ · 应激停喂", trig:"极化度 < 0.35 / 狂游 / 惊扰应激", lvl:2,
+  steps:"① 立即停喂（停止投喂刺激）；② 辅助增氧稳定鱼群；③ 排查惊扰源与水质剧变因素；④ 恢复后观察 24 h。",
+  dev:"投喂机 / 增氧机", refs:["S5","S9"]},
+ {id:"pl10", n:"投饵调节", trig:"拒食 / 摄食强度异常", lvl:1,
+  steps:"① 减量控频（八成饱原则）；② 先排查水质（氨氮/亚硝酸盐/pH）再查病害；③ 记录摄食响应作为健康基线。",
+  dev:"投喂机", refs:["S9","S14"]},
+ {id:"pl12", n:"预案G · 病害处置", trig:"烂鳃 / 肠炎 / 水霉 等确诊", lvl:2,
+  steps:"① 紫外消毒 + 水质改善；② 对症处理（遵渔医处方：细菌性内服/真菌升温盐浴）；③ 减喂并镜检复检。",
+  dev:"紫外消毒器 / 过滤器", refs:["S9"]},
+ {id:"pl13", n:"预案H · 虫害防治", trig:"擦底蹭壁 + 镜检阳性", lvl:2,
+  steps:"① 镜检鳃丝与体表确诊虫种；② 对症药浴；③ 紫外消毒+换水；④ 底排污与降密度防复发。",
+  dev:"紫外消毒器 / 换水泵", refs:["S9","S14"]},
+ {id:"pl6", n:"预案E · 维持策略", trig:"行为正常 且 水质达标", lvl:0,
+  steps:"① 增氧机低频运行；② 按计划投喂；③ 每 2 h 巡检溶氧曲线，凌晨时段重点关注。",
+  dev:"—", refs:["S9"]},
+];
+const PLAN_BY_ID = {}; PLANS.forEach(p=>PLAN_BY_ID[p.id]=p);
+/* 预案注意事项（执行后管理要点） */
+const PLAN_NOTES = {
+ pl8:"每 10 min 复测一次 DO，回升至 4 mg/L 且稳定 2 h 后方可降级；事后排查增氧设备配置缺口。",
+ pl1:"执行 20 min 后复测 DO；若 1 h 内无回升，升级为应急增氧并检查设备是否结垢/老化。",
+ pl2:"停喂期间仍保持巡塘；恢复投喂首周按八成饱执行，观察摄食响应 10 min/次。",
+ pl3:"换水温差控制在 2 ℃ 以内；先排后灌；换水后 1 h 复测氨氮/pH/水温。",
+ pl7:"降解期间每日至少 2 次氨氮检测；连续 3 天超标建议检查投喂量与生物负荷。",
+ pl4:"降温速率 ≤1 ℃/h，避免水温骤变二次应激；同步关注 DO 随温度回升。",
+ pl9:"寒潮/暴雨期间保持增氧机间歇运行打散分层；雨后 48 h 为高危窗口。",
+ pl5:"应激解除前禁止投喂与拉网；查明惊扰源（噪声/光照/捕捞）并记录。",
+ pl10:"记录每次投喂的摄食响应时长，建立本场摄食基线，作为拒食判定的对照。",
+ pl12:"用药严格执行休药期规定；处置后 3 天内每日镜检，防止继发感染。",
+ pl13:"药浴后注意增氧；全场用具消毒，防止交叉感染；引种时执行检疫。",
+ pl6:"每 2 h 巡检溶氧曲线；保持日志记录，积累本场基线数据。",
+};
+
+/* ============ 文字关键词识别 ============ */
+const KW = {
+ "浮头":{beh:"浮头", k:["浮头","吞气","水面呼吸","聚在水面","聚集水面","水面张口","都浮在"]},
+ "狂游散乱":{beh:"狂游散乱", k:["狂游","乱窜","乱游","急转","惊恐","横冲直撞","四处乱","疯游"]},
+ "拒食减食":{beh:"拒食减食", k:["拒食","不吃","不吃了","食欲差","食欲下降","减食","残饵多","残饵增多","不吃食"]},
+ "擦底蹭壁":{beh:"擦底蹭壁", k:["擦底","蹭壁","刮擦","蹭底","蹭池"]},
+ "伏底静止":{beh:"伏底静止", k:["伏底","趴底","卧底","沉底","贴底不动","不游动","趴在底"]},
+ "跳塘":{beh:"跳塘", k:["跳塘","跃出水面","跳出水面","往上跳"]},
+ "摄食抢食":{beh:"摄食抢食", k:["抢食","摄食","争食","吃料猛","吃食凶"]},
+ "正常巡游":{beh:"正常巡游", k:["正常巡游","游动正常","群体整齐","一切正常","状态好"]},
+};
+const ENV = {
+ "缺氧":["缺氧","溶氧低","氧气不够","闷"],
+ "水体分层/暴雨":["暴雨","下雨","阵雨","雷雨"],
+ "浑浊":["浑浊","水浑","泥水","水色差","水色浓"],
+ "高温":["高温","水温高","太热","热天"],
+ "低温":["低温","水温低","倒春寒","降温","冷"],
+ "氨氮风险":["氨氮","亚硝酸盐","亚盐","水质差"],
+ "死鱼":["死鱼","死亡","泛塘","翻塘"],
+ "水霉":["白毛","水霉","絮状"],
+ "肠炎":["红肿","肠炎","白便","拖便"],
+ "惊扰":["惊扰","受惊","惊吓","噪音","捕捞"],
+};
+const DIS = {
+ "烂鳃":["烂鳃","鳃烂","鳃丝"],
+ "肠炎":["肠炎","红肿","肛门红"],
+ "水霉":["水霉","白毛"],
+ "寄生虫":["寄生虫","虫","擦底","蹭壁"],
+};
+
+/* ============ 工具 ============ */
+const $ = id => document.getElementById(id);
+const clamp01 = v => Math.max(0, Math.min(1, v));
+let mode = "video", fileKind = null;
+
+/* 上传交互 */
+$("upMode").addEventListener("click", e => {
+  const b = e.target.closest(".mb"); if(!b) return;
+  mode = b.dataset.m;
+  document.querySelectorAll("#upMode .mb").forEach(x=>x.classList.toggle("on", x===b));
+  $("dropText").textContent = mode==="video" ? "点击或拖拽视频文件到此处" : "点击或拖拽图片文件到此处";
+  $("file").accept = mode==="video" ? "video/*" : "image/*";
+  resetFile();
+});
+$("drop").addEventListener("click", ()=>$("file").click());
+["dragover","dragenter"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("on");}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("on");}));
+$("drop").addEventListener("drop", e=>{ if(e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]); });
+$("file").addEventListener("change", e=>{ if(e.target.files.length) loadFile(e.target.files[0]); });
+
+let vid=null, img=null;
+function resetFile(){ vid=null; img=null; $("preview").classList.remove("show"); $("preview").removeAttribute("src"); $("fmeta").style.display="none"; }
+function loadFile(f){
+  resetFile();
+  fileKind = f.type.startsWith("video") ? "video" : (f.type.startsWith("image") ? "image" : null);
+  if(!fileKind){ $("dropText").textContent = "不支持的文件类型，请选择视频或图片"; return; }
+  if(fileKind !== mode){ mode = fileKind;
+    document.querySelectorAll("#upMode .mb").forEach(x=>x.classList.toggle("on", x.dataset.m===mode)); }
+  const url = URL.createObjectURL(f);
+  if(fileKind==="video"){
+    vid = document.createElement("video"); vid.src=url; vid.muted=true; vid.playsInline=true;
+    vid.onloadedmetadata = ()=>{
+      $("preview").src=url; $("preview").classList.add("show");
+      $("fmeta").style.display="block";
+      $("fmeta").textContent = "视频 " + f.name + " · 时长 " + vid.duration.toFixed(1) + "s · " + vid.videoWidth + "×" + vid.videoHeight;
+    };
+  } else {
+    img = new Image(); img.onload = ()=>{
+      $("preview").src=url; $("preview").classList.add("show");
+      $("fmeta").style.display="block";
+      $("fmeta").textContent = "图片 " + f.name + " · " + img.naturalWidth + "×" + img.naturalHeight;
+    }; img.src=url;
+  }
+}
+/* 快捷词 */
+document.querySelectorAll(".qk").forEach(q=>q.addEventListener("click",()=>{
+  const d=$("desc"); d.value=(d.value?d.value.replace(/\s*$/,"")+"，":"")+q.textContent;
+}));
+/* 场景预设 */
+const SCENARIOS = {
+  hypoxia:{desc:"凌晨发现鱼群聚集在水面张口呼吸（浮头），游动缓慢，水色偏浑浊，昨天下过大雨", DO:2.2, NH3:0.3, T:26},
+  ammonia:{desc:"水色发浑，鱼群摄食变差，个别鱼在池边缓慢游动，池底淤泥较多", DO:4.5, NH3:1.4, T:27},
+  normal:{desc:"鱼群游动正常，方向一致，摄食积极，水色清爽", DO:6.8, NH3:0.1, T:25},
+};
+document.querySelectorAll(".ps").forEach(b=>b.addEventListener("click",()=>{
+  const s=SCENARIOS[b.dataset.sc];
+  $("desc").value=s.desc;
+  $("pDO").value=s.DO; $("pDO").dispatchEvent(new Event("input"));
+  $("pNH3").value=s.NH3; $("pNH3").dispatchEvent(new Event("input"));
+  $("pT").value=s.T; $("pT").dispatchEvent(new Event("input"));
+}));
+
+/* ============ 视觉启发式分析 ============ */
+async function analyzeVideo(v, onProg){
+  const W=160,H=90, c=document.createElement("canvas"); c.width=W;c.height=H;
+  const g=c.getContext("2d",{willReadFrequently:true});
+  const dur = Math.min(v.duration||10, 60);
+  const step = 0.25; let prev=null, prev2=null;
+  const series=[]; let prevGray=null; let thumb0=null, thumb1=null;
+  const maxT = Math.max(8, Math.min(36, Math.floor(dur/step)));
+  for(let i=0;i<maxT;i++){
+    const t = Math.min(dur-0.05, i*step*(dur/maxT));
+    await new Promise(res=>{ v.currentTime=t; v.onseeked=res; setTimeout(res,800); });
+    g.drawImage(v,0,0,W,H);
+    if(i===0) thumb0=c.toDataURL("image/jpeg",0.6);
+    if(i===maxT-1) thumb1=c.toDataURL("image/jpeg",0.6);
+    const d = g.getImageData(0,0,W,H).data;
+    const gray = new Float32Array(W*H);
+    let sum=0;
+    for(let p=0;p<W*H;p++){ const r=d[p*4],gg=d[p*4+1],b=d[p*4+2]; gray[p]=0.299*r+0.587*gg+0.114*b; sum+=gray[p]; }
+    const mean=sum/(W*H);
+    let mot=0, motTop=0, motAll=0;
+    if(prevGray){
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+        const df=Math.abs(gray[y*W+x]-prevGray[y*W+x]);
+        if(df>14){ const v=df/255; mot+=v;
+          motAll++; if(y<H*0.33) motTop++; }
+      }
+    }
+    series.push({t: +t.toFixed(2), mot: prevGray? mot/(W*H) : 0, pix: prevGray? motAll/(W*H) : 0,
+                 top: motAll? motTop/motAll : 0, br: +(mean/255).toFixed(3)});
+    prevGray = gray;
+    if(onProg && i%4===0) onProg(i/maxT);
+  }
+  // 汇总
+  const mots = series.slice(1).map(s=>s.mot);
+  const meanMot = mots.reduce((a,b)=>a+b,0)/(mots.length||1);
+  const sd = Math.sqrt(mots.reduce((a,b)=>a+(b-meanMot)**2,0)/(mots.length||1));
+  const burst = meanMot>0 ? sd/meanMot : 0;
+  const topRatio = series.slice(1).reduce((a,s)=>a+s.top,0)/(series.length-1||1);
+  const pix = series.slice(1).reduce((a,s)=>a+s.pix,0)/(series.length-1||1);
+  return {series, meanMot, burst, topRatio, pix,
+          brMean: series.reduce((a,s)=>a+s.br,0)/series.length, frames: series.length,
+          thumb0, thumb1};
+}
+
+function drawChart(series){
+  const cv=$("chart"); const w=cv.clientWidth||520, h=150;
+  cv.width=w*2; cv.height=h*2;
+  const g=cv.getContext("2d"); g.scale(2,2);
+  g.clearRect(0,0,w,h);
+  const pad={l:34,r:8,t:10,b:18};
+  const iw=w-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const maxM=Math.max(0.05,...series.map(s=>s.mot))*1.15;
+  g.strokeStyle="rgba(120,200,255,.15)"; g.lineWidth=1;
+  for(let i=0;i<=4;i++){ const y=pad.t+ih*i/4; g.beginPath(); g.moveTo(pad.l,y); g.lineTo(w-pad.r,y); g.stroke();
+    g.fillStyle="#587a96"; g.font="8px Consolas"; g.fillText((maxM*(1-i/4)).toFixed(2),4,y+3); }
+  g.beginPath();
+  series.forEach((s,i)=>{ const x=pad.l+iw*i/(series.length-1||1), y=pad.t+ih*(1-s.mot/maxM); i?g.lineTo(x,y):g.moveTo(x,y); });
+  g.strokeStyle="#3ec6ff"; g.lineWidth=1.8; g.stroke();
+  g.lineTo(w-pad.r,pad.t+ih); g.lineTo(pad.l,pad.t+ih); g.closePath();
+  g.fillStyle="rgba(62,198,255,.12)"; g.fill();
+  g.fillStyle="#587a96"; g.font="9px Consolas";
+  g.fillText("t=0s",pad.l,h-5); g.fillText("t="+series[series.length-1].t+"s",w-pad.r-30,h-5);
+}
+
+/* ============ 文字识别 ============ */
+function extractText(desc){
+  const hit=[], env=[], dis=[];
+  for(const k in KW) if(KW[k].k.some(w=>desc.includes(w))) hit.push(k);
+  for(const k in ENV) if(ENV[k].some(w=>desc.includes(w))) env.push(k);
+  for(const k in DIS) if(DIS[k].some(w=>desc.includes(w))) dis.push(k);
+  return {beh:hit, env, dis};
+}
+
+/* ============ 推理引擎 ============ */
+function infer(input){
+  // input: {video:{meanMot,burst,topRatio,frames}|null, image:{brMean}|null,
+  //         do:null|num, nh3:null|num, t:null|num, text:{beh:[],env:[],dis:[]}, desc:string}
+  const used = new Set(); const ev = [];
+  const behs = {}; // 行为 -> support
+  const addBeh=(n,s,why)=>{ behs[n]=Math.max(behs[n]||0,s); ev.push(why); };
+
+  /* --- 文字路径（权重最高） --- */
+  (input.text.beh||[]).forEach(b=>{
+    addBeh(b, 0.72, "文字描述命中行为关键词「"+b+"」（图谱行为本体匹配）");
+  });
+  /* --- 视觉路径（阈值经真实鱼群素材校准：平稳鱼群 meanMot≈0.03~0.10） --- */
+  if(input.video){
+    const v=input.video;
+    if(v.topRatio>0.45 && v.meanMot>0.0015)
+      addBeh("浮头", Math.min(0.9, 0.45+v.topRatio*0.5), "视觉：运动能量显著集中于水体表层（表层占比 "+Math.round(v.topRatio*100)+"%，活动像素 "+(v.pix*100).toFixed(1)+"%），符合浮头/水面聚集的空间分布特征");
+    if(v.meanMot>0.15 && v.burst>0.7)
+      addBeh("狂游散乱", Math.min(0.85, 0.35+Math.min(0.4,(v.meanMot-0.15)*4)), "视觉：运动能量高（"+v.meanMot.toFixed(3)+"）且突变度 "+v.burst.toFixed(2)+"（高速+不平稳），符合狂游散乱特征");
+    if(v.meanMot<0.0008 && v.frames>=8)
+      addBeh("伏底静止", 0.75, "视觉：运动能量极低（"+v.meanMot.toFixed(4)+"），符合伏底静止/活动骤减特征（亦可能为镜头无鱼，请人工复核画面）");
+    if(v.meanMot>=0.0015 && v.meanMot<=0.15 && v.burst<0.7 && Object.keys(behs).length===0)
+      addBeh("正常巡游", Math.min(0.85, 0.55+Math.min(0.25, v.meanMot*4)), "视觉：运动能量适中（"+v.meanMot.toFixed(3)+"）、运动分布均匀（表层占比 "+Math.round(v.topRatio*100)+"%）、节奏平稳（突变度 "+v.burst.toFixed(2)+"），符合正常巡游特征");
+  }
+  if(input.image){
+    if(Object.keys(behs).length===0)
+      addBeh("无法判定-图片", 0.3, "图片为单帧信息，无法估计运动类行为；已结合文字与水质参数给出环境侧判断（建议补充 10s 以上短视频以激活视觉行为分析）");
+  }
+  /* --- 水质路径补充 --- */
+  if(input.do!=null && input.do<3.5) addBeh("浮头", Math.min(0.9, 0.4+(3.5-input.do)*0.18), "溶氧 DO="+input.do.toFixed(1)+" mg/L 低于浮头关联阈值 3.5 mg/L（Kramer 1987 / IFAS）");
+  if(!Object.keys(behs).length) addBeh("正常巡游", 0.5, "未检测到异常信号，按正常状态评估（建议补充文字描述或视频提高置信度）");
+
+  const ranked = Object.entries(behs).sort((a,b)=>b[1]-a[1]);
+  const topBeh = ranked[0][0];
+
+  /* --- 风险分量 --- */
+  let rDO=null, rNH3=null, rBeh=null;
+  if(input.do!=null){ rDO = clamp01((4.0-input.do)/3.0); }
+  if(input.nh3!=null){ rNH3 = clamp01(input.nh3/1.2); }
+  const behRiskMap = {"浮头":0.55,"狂游散乱":0.85,"拒食减食":0.45,"擦底蹭壁":0.5,"伏底静止":0.6,"跳塘":0.9,"摄食抢食":0.25,"正常巡游":0.05};
+  let behName = topBeh.startsWith("无法判定") ? "未知" : topBeh;
+  rBeh = behs[topBeh] * (behRiskMap[behName]!=null ? behRiskMap[behName] : 0.4);
+  if(topBeh==="摄食抢食" && (input.do!=null && input.do>4)) rBeh = Math.min(rBeh,0.3);
+
+  // 重归一化（只对已提供的分量）
+  const comps=[]; let R=0, wsum=0;
+  if(rDO!=null){comps.push(["溶氧风险 (DO="+(+input.do).toFixed(1)+")",rDO,0.35]); wsum+=0.35;}
+  comps.push(["行为风险 ("+behName+")",rBeh,0.40]); wsum+=0.40;
+  if(rNH3!=null){comps.push(["氨氮风险 (NH₃="+(+input.nh3).toFixed(2)+")",rNH3,0.25]); wsum+=0.25;}
+  comps.forEach(([k,v,w])=>{ R += v*(w/wsum); });
+  R=clamp01(R);
+
+  const lvl = R>=0.75?3:R>=0.5?2:R>=0.25?1:0;
+  const LV=["安全","注意","预警","危急"];
+
+  /* --- 预案触发（图谱规则） --- */
+  const fired=[];
+  const addPlan=(id,why)=>{ const p=PLAN_BY_ID[id]; if(!p) return;
+    if(!fired.find(f=>f.p.id===id)) fired.push({p, why}); };
+  const doV = input.do, nhV = input.nh3, tV = input.t;
+  const has=k=>(input.text.beh||[]).includes(k)||(behs[k]!=null&&behs[k]>=0.5);
+  if(doV!=null && doV<=1.5){ addPlan("pl8","溶氧危急（DO="+doV.toFixed(1)+" ≤ 1.5）"); addPlan("pl1","溶氧不足（DO="+doV.toFixed(1)+"）"); }
+  else if(doV!=null && doV<=2.5){ addPlan("pl1","溶氧低于预警阈值（DO="+doV.toFixed(1)+" ≤ 2.5）"); }
+  if(has("浮头")){
+    addPlan("pl1","浮头行为检出");
+    if(doV!=null && doV<=3.5) addPlan("pl2","溶氧偏低（"+doV.toFixed(1)+"）且存在浮头");
+    else if(doV==null) addPlan("pl2","浮头检出但 DO 未测——同步停喂防风险，并尽快补测溶氧");
+    else addPlan("pl12","DO 正常仍浮头——排查鳃部病害（烂鳃）或分层底缺氧");
+  }
+  if(nhV!=null && nhV>=1.2){ addPlan("pl7","氨氮中毒风险（NH₃="+nhV.toFixed(2)+" ≥ 1.2）"); addPlan("pl3","氨氮超标"); }
+  else if(nhV!=null && nhV>=0.5){ addPlan("pl3","氨氮超警戒（NH₃="+nhV.toFixed(2)+" ≥ 0.5）"); addPlan("pl7","氨氮超警戒，协同降解"); }
+  if(tV!=null && tV>=30) addPlan("pl4","水温过高（"+tV.toFixed(1)+" ℃ ≥ 30）");
+  if(tV!=null && tV<=18) addPlan("pl9","水温过低（"+tV.toFixed(1)+" ℃ ≤ 18）");
+  if(has("狂游散乱")) addPlan("pl5","狂游散乱行为（极化度骤降特征）");
+  if(has("拒食减食")) addPlan("pl10","拒食减食行为");
+  if(has("擦底蹭壁")) addPlan("pl13","擦底蹭壁（寄生虫/鳃部病害指示行为）");
+  (input.text.env||[]).forEach(e=>{
+    if(e==="死鱼"){ addPlan("pl8","已出现死鱼/泛塘征兆"); }
+    if(e==="水体分层/暴雨"||e==="低温"){ addPlan("pl9","暴雨/降温天气（防逆温分层）"); }
+    if(e==="浑浊"){ addPlan("pl3","水体浑浊（浊度上升）"); }
+    if(e==="高温"){ addPlan("pl4","描述提示高温（未测水温，建议实测确认后执行）"); }
+    if(e==="氨氮风险"){ addPlan("pl7","描述提示氨氮/亚硝酸盐问题"); }
+    if(e==="惊扰"){ addPlan("pl5","描述提示人为惊扰/应激"); }
+  });
+  (input.text.dis||[]).forEach(()=>{ addPlan("pl12","描述提示病害症状（烂鳃/肠炎/水霉）"); });
+  if(fired.length===0 && lvl===0 && behName==="正常巡游") addPlan("pl6","环境与行为均处于正常区间");
+
+  // 按最高响应级别排序
+  fired.sort((a,b)=>b.p.lvl-a.p.lvl);
+  const maxLvl = fired.length? Math.max(...fired.map(f=>f.p.lvl)) : 0;
+  // 预警级别对齐：行为+水质综合定的 lvl 与预案最高级取严
+  const finalLvl = Math.max(lvl, maxLvl>=3?3:0);
+
+  const usedRefs=new Set();
+  fired.forEach(f=>f.p.refs.forEach(r=>usedRefs.add(r)));
+  return {ranked, behName, R, lvl:finalLvl, LV, comps, wsum, fired, used:[...usedRefs], evid:ev, rDO,rNH3,rBeh};
+}
+
+/* ============ 主流程 ============ */
+$("pDO").addEventListener("input",e=>{const v=+e.target.value; $("vDO").textContent = v===0?"未提供":v.toFixed(1)+" mg/L";});
+$("pNH3").addEventListener("input",e=>{const v=+e.target.value; $("vNH3").textContent = v===0?"未提供":v.toFixed(2)+" mg/L";});
+$("pT").addEventListener("input",e=>{const v=+e.target.value; $("vT").textContent = v===0?"未提供":v.toFixed(1)+" ℃";});
+
+$("btnGo").addEventListener("click", async ()=>{
+  const btn=$("btnGo"); const desc=$("desc").value.trim();
+  const doV = +$("pDO").value || null, nhV = +$("pNH3").value || null, tV = +$("pT").value || null;
+  if(!desc && !vid && !img && !doV && !nhV && !tV){
+    $("desc").placeholder = "请先提供任意一项输入：上传视频/图片、填写文字描述或拖动水质参数…"; return;
+  }
+  btn.disabled=true; btn.textContent="分析中…";
+  let vis=null;
+  try{
+    if(vid && vid.duration>0){
+      vis = await analyzeVideo(vid, p=>{ btn.textContent="分析中… "+Math.round(p*100)+"%"; });
+      $("visPanel").classList.add("show");
+      drawChart(vis.series);
+      $("mMot").textContent=vis.meanMot.toFixed(3);
+      $("mTop").textContent=Math.round(vis.topRatio*100)+"%";
+      $("mBur").textContent=vis.burst.toFixed(2);
+      $("mFr").textContent=vis.frames;
+      $("thumbs").innerHTML = (vis.thumb0&&vis.thumb1)
+        ? '<div class="th"><img src="'+vis.thumb0+'"><span class="tl">分析首帧</span></div><div class="th"><img src="'+vis.thumb1+'"><span class="tl">分析末帧</span></div>' : "";
+    } else if(img){
+      // 图片：单帧亮度/纹理粗估
+      const c=document.createElement("canvas"); const s=160; c.width=s; c.height=Math.round(s*(img.naturalHeight/img.naturalWidth)||90);
+      const g=c.getContext("2d",{willReadFrequently:true}); g.drawImage(img,0,0,c.width,c.height);
+      const d=g.getImageData(0,0,c.width,c.height).data;
+      let sum=0,s2=0,n=c.width*c.height;
+      for(let i=0;i<n;i++){const y=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2]; sum+=y; s2+=y*y;}
+      const mean=sum/n, sd=Math.sqrt(s2/n-mean*mean);
+      vis={brMean:+(mean/255).toFixed(3), frames:1, meanMot:null};
+      $("visPanel").classList.add("show");
+      $("chart").getContext("2d").clearRect(0,0,$("chart").width,$("chart").height);
+      $("mMot").textContent="—"; $("mTop").textContent="—"; $("mBur").textContent="—"; $("mFr").textContent="1（图片单帧）";
+      $("fmeta").textContent += " · 亮度均值 "+(mean/255).toFixed(2)+"（过暗画面会降低视觉判断置信度）";
+    }
+  }catch(err){ console.warn(err); }
+
+  const text = extractText(desc);
+  const res = infer({video: vis&&vis.meanMot!=null?vis:null, image: img&&fileKind==="image"?{brMean:vis?vis.brMean:0}:null,
+                     do:doV, nh3:nhV, t:tV, text, desc});
+
+  /* 渲染 */
+  $("result").style.display="block";
+  $("resMode").textContent = [vid?"视频":"", img?"图片":"", desc?"文字":"", doV||nhV||tV?"水质参数":""].filter(Boolean).join(" + ") || "—";
+  // 行为
+  $("behs").innerHTML = res.ranked.slice(0,4).map(([b,s])=>{
+    const why=(res.evid.find(e=>e.includes("「"+b+"」")||e.includes(b))||"");
+    const names={"浮头":"缺氧/水质信号","狂游散乱":"恐慌应激","拒食减食":"早期异常","擦底蹭壁":"寄生虫/鳃病","伏底静止":"中毒/病害","跳塘":"严重应激","摄食抢食":"正常摄食","正常巡游":"健康状态","无法判定-图片":"信息不足"};
+    return '<div class="beh"><div class="bt"><span>'+b+
+      (names[b]?' <span style="font-size:10px;color:var(--dim);font-weight:400">（'+names[b]+'）</span>':'')+
+      '</span><span class="pc">'+Math.round(s*100)+'%</span></div><div class="sup"><i style="width:'+Math.round(s*100)+'%"></i></div>'+
+      '<div class="bd">'+(why||"")+'</div></div>'; }).join("");
+  $("behEvid").innerHTML = "<b>判定说明：</b>百分数为各行为的支持度（启发式/规则支持强度，非深度模型概率）。"+
+    (res.behName==="未知"?"图片单帧信息有限，建议补充 10s 以上视频或文字描述。":"");
+  // 风险
+  const LVD = ["养殖环境与鱼群状态良好，维持现有管理策略即可。","存在轻微异常征兆：提高巡检与采样频率，关注指标是否持续恶化。","已达到预警阈值：请按下方预案执行处置，20 分钟后复测并回写记录。","危急态势：请立即执行最高优先级预案并通知管理人员现场值守。"];
+  $("lvChip").textContent = res.LV[res.lvl]; $("lvChip").className = "lv lv"+res.lvl;
+  $("lvDesc").textContent = LVD[res.lvl];
+  $("gpin").style.left = (res.R*100)+"%";
+  $("rcomp").innerHTML = res.comps.map(([k,v])=>
+    '<div class="rc"><span class="k">'+k+'</span><div class="tr"><div class="fl" style="width:'+Math.round(v*100)+'%"></div></div><span class="v">'+v.toFixed(2)+'</span></div>').join("") +
+    (res.wsum<1?'<div class="note">未提供的参数已按可用分量重归一化；补充实测 DO/氨氮可显著提升评估可靠性。</div>':'');
+  // 预案
+  $("planCnt").textContent = res.fired.length + " 项预案触发";
+  $("plans").innerHTML = res.fired.map((f,i)=>{
+    const pr = f.p.lvl>=3?["紧急","#ef5350"]:f.p.lvl===2?["重要","#f5b23c"]:["一般","#7f9db8"];
+    return '<div class="plan'+(f.p.lvl>=3?" p0":"")+'"><div class="ph"><span class="pn">'+f.p.n+
+      '</span><span style="font-size:10px;color:'+pr[1]+';border:1px solid '+pr[1]+'55;border-radius:8px;padding:0 8px">'+pr[0]+'</span>'+
+      '<span class="pt">触发：'+f.p.trig+'</span></div>'+
+      '<div class="steps">'+f.p.steps+'</div><div class="dev">执行设备：'+f.p.dev+'</div>'+
+      '<div class="pn2">⚠ 注意：'+(PLAN_NOTES[f.p.id]||"按预案执行并记录复测结果。")+'</div>'+
+      '<div class="pr">依据：'+f.why+' · 文献 '+f.p.refs.map(r=>"["+r+"]").join(" ")+'</div></div>'; }).join("") ||
+    '<div class="note">暂无预案触发。</div>';
+  // 引用
+  $("usedRefs").innerHTML = res.used.map(r=>"["+r+"]").join(" ") + " —— 点击上方“查看全部文献”查看条目全文。";
+  res.used.forEach(r=>{ if(!REFS[r]) return; });
+
+  /* 保存最近一次分析供导出 */
+  window.LAST = {time:new Date().toLocaleString("zh-CN"), res, vis, desc, doV, nhV, tV};
+  $("result").scrollIntoView({behavior:"smooth", block:"start"});
+  btn.disabled=false; btn.textContent="开 始 分 析 预 测";
+});
+
+/* 导出分析报告 */
+$("btnReport").addEventListener("click", ()=>{
+  if(!window.LAST){ return; }
+  const L=window.LAST, r=L.res;
+  const lines=[];
+  lines.push("═".repeat(46));
+  lines.push("鱼类行为预测 · 在线分析报告");
+  lines.push("═".repeat(46));
+  lines.push("生成时间："+L.time);
+  lines.push("输入模态："+[L.vis&&L.vis.meanMot!=null?"视频":"", (document.getElementById("preview").src&&document.getElementById("preview").classList.contains("show"))?"已附画面":"", L.desc?"文字描述":"", (L.doV||L.nhV||L.tV)?"水质参数":""].filter(Boolean).join(" + "));
+  if(L.desc) lines.push("文字描述："+L.desc);
+  lines.push("-".repeat(46));
+  lines.push("【水质参数】");
+  lines.push("  溶解氧 DO："+(L.doV!=null? L.doV.toFixed(1)+" mg/L":"未提供"));
+  lines.push("  氨氮 NH₃："+(L.nhV!=null? L.nhV.toFixed(2)+" mg/L":"未提供"));
+  lines.push("  水温 T："+(L.tV!=null? L.tV.toFixed(1)+" ℃":"未提供"));
+  if(L.vis && L.vis.meanMot!=null){
+    lines.push("【视觉启发式指标】");
+    lines.push("  平均运动能量："+L.vis.meanMot.toFixed(4));
+    lines.push("  运动表层占比："+Math.round(L.vis.topRatio*100)+"%");
+    lines.push("  运动突变度："+L.vis.burst.toFixed(2));
+    lines.push("  分析帧数："+L.vis.frames);
+  }
+  lines.push("-".repeat(46));
+  lines.push("【行为判定】（支持度排序）");
+  r.ranked.forEach(([b,s],i)=>{ lines.push("  "+(i+1)+". "+b+"："+Math.round(s*100)+"%"); });
+  lines.push("  主判行为："+r.behName);
+  lines.push("【风险评估】");
+  lines.push("  融合风险指数 R = "+r.R.toFixed(2)+" → "+r.LV[r.lvl]);
+  r.comps.forEach(([k,v])=>lines.push("  "+k+"："+v.toFixed(2)));
+  lines.push("【解决方案】（"+r.fired.length+" 项预案触发）");
+  r.fired.forEach((f,i)=>{
+    lines.push("  "+(i+1)+". "+f.p.n+"（触发："+f.p.trig+"）");
+    f.p.steps.split("；").forEach(s=>{ s=s.trim(); if(s) lines.push("     - "+s.replace(/^[①②③④⑤]\s*/,"")); });
+    lines.push("     执行设备："+f.p.dev);
+    lines.push("     注意："+(PLAN_NOTES[f.p.id]||"按预案执行并记录复测结果。"));
+    lines.push("     文献："+f.p.refs.map(x=>"["+x+"]").join(" "));
+  });
+  lines.push("【引用依据】"+r.used.map(x=>"["+x+"]").join(" "));
+  lines.push("-".repeat(46));
+  lines.push("说明：本报告由启发式视觉分析与知识图谱规则推理生成，");
+  lines.push("为决策支持参考，不替代专业兽医诊断与现场管理判断。");
+  lines.push("阈值口径：GB 11607-89 / 《养殖水环境化学》 / Kramer(1987) / SRAC-3700 等。");
+  const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");
+  const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  a.download="行为分析报告_"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".txt";
+  a.href=URL.createObjectURL(blob); a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+});
+
+/* 文献面板 */
+$("reflist").innerHTML = ORDER.map(t=>{
+  const r=REFS[t]; return '<div class="rf" id="ref-'+t+'"><span class="tg">['+t+']</span>'+r.t+'<span class="cn">'+r.c+'</span><span class="nt">要点：'+r.n+'</span></div>';
+}).join("");
+document.addEventListener("click",e=>{
+  const r=e.target.closest(".ref,.plan .pr");
+  if(r && r.classList.contains("ref")){ $("mask").classList.add("on"); }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("mask").classList.remove("on");});
+$("mask").addEventListener("click",e=>{if(e.target===$("mask"))$("mask").classList.remove("on");});
+</script>
+</body>
+</html>
